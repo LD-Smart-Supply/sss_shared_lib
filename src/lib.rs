@@ -12,6 +12,9 @@ use solana_sdk::{
 };
 use std::{
     env,
+    ffi::{CStr, CString},
+    os::raw::{c_char, c_int, c_uchar},
+    ptr,
     sync::{Arc, Mutex},
 };
 
@@ -124,5 +127,104 @@ pub fn create_new_token(
     let signature = create_consumable_token(&mint, uri, name, decimals)?;
     
     Ok((signature, mint.pubkey()))
+}
+
+// FFI functions
+
+/// Creates a new token and returns the transaction signature and mint address
+/// 
+/// # Safety
+/// 
+/// This function is unsafe because it works with raw pointers for C interoperability.
+/// The caller must ensure that:
+/// - uri_ptr and name_ptr are valid, null-terminated C strings
+/// - signature_out and mint_address_out are valid pointers to buffers of sufficient size
+///
+/// @param uri_ptr A pointer to a null-terminated C string containing the token URI
+/// @param name_ptr A pointer to a null-terminated C string containing the token name
+/// @param decimals The number of decimal places for the token
+/// @param signature_out A pointer to a buffer where the transaction signature will be written
+/// @param mint_address_out A pointer to a buffer where the mint address will be written
+/// @return 0 on success, non-zero error code on failure
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn create_token(
+    uri_ptr: *const c_char,
+    name_ptr: *const c_char,
+    decimals: c_uchar,
+    signature_out: *mut c_char,
+    mint_address_out: *mut c_char,
+    signature_len: c_int,
+    mint_address_len: c_int,
+) -> c_int {
+    // Check for null pointers
+    if uri_ptr.is_null() || name_ptr.is_null() || signature_out.is_null() || mint_address_out.is_null() {
+        return -1;
+    }
+
+    // Convert C strings to Rust strings
+    let uri = match unsafe { CStr::from_ptr(uri_ptr).to_str() } {
+        Ok(s) => s.to_string(),
+        Err(_) => return -2,
+    };
+
+    let name = match unsafe { CStr::from_ptr(name_ptr).to_str() } {
+        Ok(s) => s.to_string(),
+        Err(_) => return -3,
+    };
+
+    // Call the Rust function
+    match create_new_token(uri, name, decimals) {
+        Ok((signature, mint_pubkey)) => {
+            // Convert the signature to a C string
+            let signature_cstr = match CString::new(signature) {
+                Ok(s) => s,
+                Err(_) => return -4,
+            };
+            
+            // Convert the mint address to a C string
+            let mint_address_cstr = match CString::new(mint_pubkey.to_string()) {
+                Ok(s) => s,
+                Err(_) => return -5,
+            };
+            
+            // Copy the signature to the output buffer
+            let signature_bytes = signature_cstr.as_bytes_with_nul();
+            if signature_bytes.len() > signature_len as usize {
+                return -6;
+            }
+            unsafe { ptr::copy_nonoverlapping(
+                signature_bytes.as_ptr(),
+                signature_out as *mut u8,
+                signature_bytes.len(),
+            ) };
+            
+            // Copy the mint address to the output buffer
+            let mint_address_bytes = mint_address_cstr.as_bytes_with_nul();
+            if mint_address_bytes.len() > mint_address_len as usize {
+                return -7;
+            }
+            unsafe { ptr::copy_nonoverlapping(
+                mint_address_bytes.as_ptr(),
+                mint_address_out as *mut u8,
+                mint_address_bytes.len(),
+            ) };
+            
+            0 // Success
+        },
+        Err(_) => -8, // Error creating token
+    }
+}
+
+/// Free a string allocated by the Rust library
+/// 
+/// # Safety
+/// 
+/// This function is unsafe because it works with raw pointers.
+/// The pointer must have been allocated by this library.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn free_string(ptr: *mut c_char) {
+    if !ptr.is_null() {
+        let _ = unsafe { CString::from_raw(ptr) };
+    }
 }
 
