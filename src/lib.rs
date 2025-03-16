@@ -74,16 +74,29 @@ pub fn create_consumable_token(
     // Get the payer keypair
     let payer = get_payer()?;
 
+    // Derive the metadata account PDA
+    let seeds = &[
+        "metadata".as_bytes(),
+        &mpl_token_metadata::ID.to_bytes(),
+        &mint.pubkey().to_bytes(),
+    ];
+    let (metadata_account, _) = Pubkey::find_program_address(seeds, &mpl_token_metadata::ID);
+
     // Create the instruction to create a consumable token
     let create_ix = CreateV1Builder::new()
+        .metadata(metadata_account)
         .mint(mint.pubkey(), true)
         .authority(payer.pubkey())
         .payer(payer.pubkey())
         .update_authority(payer.pubkey(), false)
         .name(name)
         .uri(uri)
+        .seller_fee_basis_points(0)
+        .symbol("".to_string())
         .token_standard(TokenStandard::Fungible)
         .decimals(decimals)
+        // Add the SPL token program ID
+        .spl_token_program(Some(spl_token::id()))
         .instruction();
 
     // Create the message
@@ -114,21 +127,3 @@ pub fn create_new_token(
     Ok((signature, mint.pubkey()))
 }
 
-// Example usage:
-// fn main() -> Result<(), Box<dyn std::error::Error>> {
-//     let uri = "https://example.com/metadata.json".to_string();
-//     let name = "My Token".to_string();
-//     let decimals = 6;
-//
-//     match create_new_token(uri, name, decimals) {
-//         Ok((signature, mint_pubkey)) => {
-//             println!("Transaction signature: {}", signature);
-//             println!("Mint address: {}", mint_pubkey);
-//             Ok(())
-//         },
-//         Err(e) => {
-//             eprintln!("Error creating token: {}", e);
-//             Err(e)
-//         }
-//     }
-// }
