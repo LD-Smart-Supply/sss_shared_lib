@@ -95,7 +95,6 @@ pub fn create_consumable_token(
         .symbol("".to_string())
         .token_standard(TokenStandard::Fungible)
         .decimals(decimals)
-        // Add the SPL token program ID
         .spl_token_program(Some(spl_token::id()))
         .instruction();
 
