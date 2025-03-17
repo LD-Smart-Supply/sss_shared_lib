@@ -9,10 +9,11 @@ A production-grade Rust library for interacting with Solana blockchain, specific
 - FFI bindings for C/C++ integration
 - Secure key management using BIP39 mnemonics
 - Built-in RPC client configuration
+- Comprehensive error handling with custom error types
 
 ## Prerequisites
 
-- Rust 1.70.0 or higher
+- Rust 2025 edition or higher
 - Solana CLI tools
 - C compiler (for FFI usage)
 
@@ -41,17 +42,17 @@ PAYER_MNEMONIC="your twelve word mnemonic phrase here"
 ### Rust
 
 ```rust
-use sss_shared::{create_new_token, mint_token};
+use sss_shared::{create_new_token, mint_token, SssResult};
 
 // Create a new token
-let (signature, mint_pubkey) = create_new_token(
+let (signature, mint_pubkey): SssResult<(String, Pubkey)> = create_new_token(
     "https://example.com/token.json".to_string(),
     "My Token".to_string(),
     9
 )?;
 
 // Mint additional tokens
-let signature = mint_token(mint_pubkey, None, 1000000000)?;
+let signature: SssResult<String> = mint_token(mint_pubkey, None, 1000000000)?;
 ```
 
 ### C/C++
@@ -59,8 +60,8 @@ let signature = mint_token(mint_pubkey, None, 1000000000)?;
 ```c
 #include "sss_shared.h"
 
-char signature[128];
-char mint_address[45];
+char signature[100];
+char mint_address[50];
 
 // Create a new token
 int result = create_token(
@@ -85,14 +86,26 @@ result = mint_token_ffi(
 
 ## Error Handling
 
-The library uses Rust's Result type for error handling in the Rust API. For the C API, error codes are returned as integers:
+### Rust API
+
+The library uses a custom `SssResult<T>` type for error handling in the Rust API, which is a type alias for `Result<T, SssError>`. The `SssError` enum provides detailed error categories:
+
+- `ConfigError`: Environment configuration issues
+- `KeypairError`: Problems with keypair operations
+- `RpcError`: Solana RPC client errors
+- `TokenError`: Token creation or minting errors
+- `FfiError`: Foreign function interface errors
+
+### C API
+
+For the C API, error codes are returned as integers:
 
 - 0: Success
 - -1: Null pointer error
-- -2: Invalid mint address
-- -3: Invalid string conversion
-- -4: Invalid token owner address
-- -5: String conversion error
+- -2: Invalid mint address or string conversion error
+- -3: Invalid string conversion or token owner address
+- -4: Buffer size error or token operation error
+- -5: Token operation error
 - -6: Buffer creation error
 - -7: Buffer size error
 - -8: Token operation error
@@ -118,8 +131,9 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Changelog
 
-### [0.1.0] - 2025-17-03
+### [0.1.0] - 2023-03-17
 
 - Initial release
 - Basic token creation and minting functionality
 - FFI bindings for C integration
+- Custom error handling system
