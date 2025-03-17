@@ -131,7 +131,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Changelog
 
-### [0.1.0] - 2023-03-17
+### [0.1.0] - 2025-03-17
 
 - Initial release
 - Basic token creation and minting functionality
