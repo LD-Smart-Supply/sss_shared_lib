@@ -18,8 +18,7 @@ echo "✅ Rust library built successfully"
 
 # Compile the C example
 echo "Compiling C example..."
-gcc -o c_example examples/c_example.c -L./target/release -lsss_shared
-
+clang -o c_example examples/c_example.c -L./target/release -lsss_shared
 # Check if compilation was successful
 if [ $? -ne 0 ]; then
     echo "❌ Failed to compile C example"
