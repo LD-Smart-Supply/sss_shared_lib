@@ -34,6 +34,15 @@ int create_token(
  */
 void free_string(char* ptr);
 
+// Function to mint tokens
+int mint_token_ffi(
+    const char* mint_address,
+    const char* token_owner,  // can be NULL to use payer
+    uint64_t amount,
+    char* signature_out,
+    int signature_len
+);
+
 #ifdef __cplusplus
 }
 #endif
