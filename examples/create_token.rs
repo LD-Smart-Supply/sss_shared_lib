@@ -22,7 +22,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         },
         Err(e) => {
             println!("❌ Error creating token: {}", e);
-            Err(e)
+            Err(Box::new(e))
         }
     }
 }
