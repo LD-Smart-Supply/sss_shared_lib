@@ -10,7 +10,9 @@ mod token;
 
 pub use error::{SssError, SssResult};
 pub use ffi::{create_token, free_string, mint_token_ffi};
-pub use token::{create_consumable_token, create_new_token, mint_token};
+pub use token::{
+    create_consumable_token, create_new_token, fetch_digital_assets_by_owner, mint_token,
+};
 
 use bip39::{Language, Mnemonic, Seed};
 use dotenv::dotenv;

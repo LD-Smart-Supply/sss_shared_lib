@@ -1,5 +1,38 @@
 //! Token creation and management functionality
 
+use reqwest::blocking::Client;
+use reqwest::header::CONTENT_TYPE;
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Serialize, Deserialize)]
+struct MetaplexRequestBody {
+    jsonrpc: String,
+    id: u64,
+    method: String,
+    params: serde_json::Value,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DigitalAsset {
+    pub id: String,
+    pub content: serde_json::Value,
+    pub metadata: serde_json::Value,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct MetaplexResult {
+    total: u64,
+    limit: u64,
+    items: Vec<DigitalAsset>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct MetaplexResponse {
+    jsonrpc: String,
+    result: MetaplexResult,
+    id: u64,
+}
+
 use crate::error::{IntoSssError, SssResult};
 use mpl_token_metadata::instructions::{CreateV1Builder, MintV1Builder};
 use mpl_token_metadata::types::TokenStandard;
@@ -148,4 +181,42 @@ pub fn mint_token(mint: Pubkey, token_owner: Option<Pubkey>, amount: u64) -> Sss
         .into_sss_error("Failed to send and confirm transaction")?;
 
     Ok(signature.to_string())
+}
+
+/// Fetches digital assets owned by a specific wallet address
+///
+/// # Arguments
+///
+/// * `owner` - The public key of the wallet address to fetch assets for
+///
+/// # Returns
+///
+/// A vector of DigitalAsset objects representing the assets owned by the wallet
+pub fn fetch_digital_assets_by_owner(owner: Pubkey) -> SssResult<Vec<DigitalAsset>> {
+    let url = "https://devnet-aura.metaplex.com/31aff70e-1d9a-4b18-b875-17a899d8ba16";
+    let client = Client::new();
+
+    let request_body = MetaplexRequestBody {
+        jsonrpc: "2.0".to_string(),
+        id: 1,
+        method: "getAssetsByOwner".to_string(),
+        params: serde_json::json!({
+            "ownerAddress": owner.to_string(),
+            "grouping": ["collection"],
+            "sortBy": { "sortBy": "created", "sortDirection": "desc" }
+        }),
+    };
+
+    let response = client
+        .post(url)
+        .header(CONTENT_TYPE, "application/json")
+        .json(&request_body)
+        .send()
+        .into_sss_error("Failed to send request to Metaplex API")?;
+
+    let metaplex_response: MetaplexResponse = response
+        .json()
+        .into_sss_error("Failed to parse Metaplex API response")?;
+
+    Ok(metaplex_response.result.items)
 }
